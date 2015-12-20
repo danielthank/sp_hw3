@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
 reread:
             n = read(STDIN_FILENO, buf, remain);
             buf[n] = 0;
+            //fprintf(stderr, "buf: %s\n", buf);
             if (n == remain) {
                 cnt[0]++;
                 fprintf(logfile, "receive 0 %d\n",cnt[0]);
