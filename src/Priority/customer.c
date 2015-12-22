@@ -23,16 +23,19 @@ static int cmp(const void *a, const void *b) {
 }
 
 static void sig_normal(int signo) {
+    //fprintf(stderr, "INT deliver\n");
     complete[0]++;
     fprintf(logfile, "finish 0 %d\n", complete[0]);
 }
 
 static void sig_member(int signo) {
+    //fprintf(stderr, "USR1 deliver\n");
     complete[1]++;
     fprintf(logfile, "finish 1 %d\n", complete[1]);
 }
 
 static void sig_vip(int signo) {
+    //fprintf(stderr, "USR2 deliver\n");
     complete[2]++;
     fprintf(logfile, "finish 2 %d\n", complete[2]);
 }
@@ -117,10 +120,12 @@ int main(int argc, char *argv[]) {
         }
         else {
             if (complete[list[i].type] < list[i].serial) {
-                fprintf(logfile, "timeout\n");
-                break;
+                fprintf(logfile, "timeout %d %d\n", list[i].type, list[i].serial);
+                return 0;
             }
         }
     }
+    while (complete[0] + complete[1] + complete[2] != cnt[0] + cnt[1] + cnt[2])
+        pause();
     return 0;
 }

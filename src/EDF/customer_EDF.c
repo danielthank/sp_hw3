@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
         }
         else {
             if (complete[list[i].type] < list[i].serial) {
-                fprintf(logfile, "timeout\n");
+                fprintf(logfile, "timeout %d %d\n", list[i].type, list[i].serial);
             }
         }
     }

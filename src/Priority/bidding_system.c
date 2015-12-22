@@ -30,6 +30,7 @@ static void sig_member(int signo) {
         create_time(&rem, 0);
     }
     kill(pid, SIGUSR1);
+    //fprintf(stderr, "USR1 send\n");
     fprintf(logfile, "finish 1 %d\n", cnt[1]);
 }
 
@@ -40,6 +41,7 @@ static void sig_vip(int signo) {
     create_time(&req, 200000000L);
     nanosleep(&req, &rem);
     kill(pid, SIGUSR2);
+    //fprintf(stderr, "USR2 send\n");
     fprintf(logfile, "finish 2 %d\n", cnt[2]);
 }
 
@@ -83,6 +85,7 @@ int main(int argc, char *argv[]) {
     //dup2(STDERR_FILENO, fileno(logfile));
     sigprocmask(SIG_SETMASK, &oldmask, NULL);
     while (1) {
+        //fprintf(stderr, "%d %d\n", top, tail);
         while (top != tail) {
             struct timespec req, rem;
             create_time(&req, normal_queue[tail]);
@@ -91,6 +94,7 @@ int main(int argc, char *argv[]) {
             }
             else {
                 kill(pid, SIGINT);
+                //fprintf(stderr, "INT send\n");
                 tail++;
                 fprintf(logfile, "finish 0 %d\n", tail);
             }
