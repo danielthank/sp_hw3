@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <sys/select.h>
 #include <string.h>
-#include "../error.h"
+#include "../utility.h"
 
 #define SIGUSR3 SIGWINCH
 
@@ -17,14 +17,6 @@ int processing, pending[3], cnt[3], sig_table[3];
 pid_t pid;
 FILE *logfile;
 
-static void create_time(struct timespec* spec, long time) {
-    spec->tv_sec = time / 1000000000L;
-    spec->tv_nsec = time % 1000000000L;
-}
-
-static long create_long(struct timespec* spec) {
-    return spec->tv_sec * 1000000000L + spec->tv_nsec;
-}
 
 static void sig_check(int signo) {
     int sig;
@@ -61,7 +53,7 @@ int main(int argc, char *argv[]) {
     if (argc != 2)
         err_quit("Command parameter error");
     int fd[2];
-    sigset_t newmask, oldmask;
+    sigset_t newmask;
     struct sigaction newact;
 
     newact.sa_handler = sig_check;
@@ -85,7 +77,7 @@ int main(int argc, char *argv[]) {
     sigaddset(&newmask, SIGUSR1);
     sigaddset(&newmask, SIGUSR2);
     sigaddset(&newmask, SIGUSR3);
-    sigprocmask(SIG_BLOCK, &newmask, &oldmask);
+    sigprocmask(SIG_BLOCK, &newmask, NULL);
     dup2(fd[0], STDIN_FILENO);
     close(fd[1]);
 
@@ -96,7 +88,7 @@ int main(int argc, char *argv[]) {
     sig_table[0] = SIGUSR1;
     sig_table[1] = SIGUSR2;
     sig_table[2] = SIGUSR3;
-    sigprocmask(SIG_SETMASK, &oldmask, NULL);
+    sigprocmask(SIG_UNBLOCK, &newmask, NULL);
     while (1) {
         while (processing < 3) {
             int save_id = processing;

@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <sys/select.h>
 #include <string.h>
-#include "../error.h"
+#include "../utility.h"
 
 #define MAX_QUEUE 10000
 
@@ -21,14 +21,13 @@ static void sig_member(int signo) {
     cnt[1]++;
     fprintf(logfile, "receive 1 %d\n", cnt[1]);
     struct timespec req, rem;
-    req.tv_sec = 0;
-    req.tv_nsec = 500000000L;
+    create_time(&req, 500000000);
+    create_time(&rem, 0);
     while (1) {
         nanosleep(&req, &rem);
         if (rem.tv_nsec == 0) break;
         req = rem;
-        rem.tv_sec = 0;
-        rem.tv_nsec = 0;
+        create_time(&rem, 0);
     }
     kill(pid, SIGUSR1);
     fprintf(logfile, "finish 1 %d\n", cnt[1]);
@@ -38,8 +37,7 @@ static void sig_vip(int signo) {
     cnt[2]++;
     fprintf(logfile, "receive 2 %d\n", cnt[2]);
     struct timespec req, rem;
-    req.tv_sec = 0;
-    req.tv_nsec = 200000000L;
+    create_time(&req, 200000000L);
     nanosleep(&req, &rem);
     kill(pid, SIGUSR2);
     fprintf(logfile, "finish 2 %d\n", cnt[2]);
@@ -87,10 +85,9 @@ int main(int argc, char *argv[]) {
     while (1) {
         while (top != tail) {
             struct timespec req, rem;
-            req.tv_sec = normal_queue[tail]/1000000000L;
-            req.tv_nsec = normal_queue[tail]%1000000000L;
+            create_time(&req, normal_queue[tail]);
             if (nanosleep(&req, &rem) == -1 && errno == EINTR) {
-                normal_queue[tail] = rem.tv_sec * 1000000000 + req.tv_nsec;
+                normal_queue[tail] = create_long(&rem);
             }
             else {
                 kill(pid, SIGINT);

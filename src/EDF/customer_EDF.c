@@ -6,6 +6,8 @@
 #include <signal.h>
 #include "../utility.h"
 
+#define SIGUSR3 SIGWINCH
+
 FILE *data, *logfile;
 
 typedef struct {
@@ -22,19 +24,13 @@ static int cmp(const void *a, const void *b) {
     return ((task*)a)->time > ((task*)b)->time;
 }
 
-static void sig_normal(int signo) {
-    complete[0]++;
-    fprintf(logfile, "finish 0 %d\n", complete[0]);
-}
-
-static void sig_member(int signo) {
-    complete[1]++;
-    fprintf(logfile, "finish 1 %d\n", complete[1]);
-}
-
-static void sig_vip(int signo) {
-    complete[2]++;
-    fprintf(logfile, "finish 2 %d\n", complete[2]);
+static void sig_check(int signo) {
+    int sig;
+    if (signo == SIGUSR1) sig = 0;
+    else if (signo == SIGUSR2) sig = 1;
+    else sig = 2;
+    complete[sig]++;
+    fprintf(logfile, "finish %d %d\n", sig, complete[sig]);
 }
 
 int main(int argc, char *argv[]) {
@@ -53,9 +49,10 @@ int main(int argc, char *argv[]) {
         list[top].serial = cnt[type];
         list[top].isgenerate = 1;
         top++;
-        if (type == 0) continue;
+        if (type == 0)
+            list[top].time = start * 1000000000L + 2000000000L;
         else if (type == 1)
-            list[top].time = start * 1000000000L + 1000000000L;
+            list[top].time = start * 1000000000L + 3000000000L;
         else
             list[top].time = start * 1000000000L + 300000000L;
         list[top].type = type;
@@ -66,20 +63,12 @@ int main(int argc, char *argv[]) {
     qsort(list, top, sizeof(task), cmp);
 
     struct sigaction newact;
-    newact.sa_handler = sig_normal;
-    sigemptyset(&newact.sa_mask);
-    newact.sa_flags = 0;
-    sigaction(SIGINT, &newact, NULL);
-
-    newact.sa_handler = sig_member;
+    newact.sa_handler = sig_check;
     sigemptyset(&newact.sa_mask);
     newact.sa_flags = 0;
     sigaction(SIGUSR1, &newact, NULL);
-
-    newact.sa_handler = sig_vip;
-    sigemptyset(&newact.sa_mask);
-    newact.sa_flags = 0;
     sigaction(SIGUSR2, &newact, NULL);
+    sigaction(SIGUSR3, &newact, NULL);
 
     struct timespec req, rem;
     create_time(&req, list[0].time);
@@ -102,15 +91,13 @@ int main(int argc, char *argv[]) {
             generate[list[i].type]++;
             switch(list[i].type) {
                 case 0:
-                    printf("ordinary\n");
-                    fflush(stdout);
-                    fsync(STDOUT_FILENO);
-                    break;
-                case 1:
                     kill(getppid(), SIGUSR1);
                     break;
-                case 2:
+                case 1:
                     kill(getppid(), SIGUSR2);
+                    break;
+                case 2:
+                    kill(getppid(), SIGUSR3);
                     break;
             }
             fprintf(logfile, "send %d %d\n", list[i].type, generate[list[i].type]);
@@ -118,9 +105,11 @@ int main(int argc, char *argv[]) {
         else {
             if (complete[list[i].type] < list[i].serial) {
                 fprintf(logfile, "timeout\n");
-                break;
             }
         }
     }
+    printf("terminate\n");
+    fflush(stdout);
+    fsync(STDOUT_FILENO);
     return 0;
 }
